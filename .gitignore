@@ -189,3 +189,4 @@ Desktop.ini
 
 # Python virtual environment
 .venv/
+istio-1.17.2/

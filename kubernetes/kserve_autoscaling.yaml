@@ -1,0 +1,20 @@
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "sentiment-classifier"
+  annotations:
+    autoscaling.knative.dev/target: "10"  # Target 10 concurrent requests per pod
+    autoscaling.knative.dev/minScale: "1"
+    autoscaling.knative.dev/maxScale: "5"
+spec:
+  predictor:
+    containers:
+      - name: sentiment-model
+        image: akshaymittal143/sentiment-model:v1
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"

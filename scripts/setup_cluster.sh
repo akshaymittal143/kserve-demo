@@ -66,12 +66,18 @@ kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1
 
 # Install Prometheus for monitoring
 echo "Installing Prometheus..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
 kubectl create namespace monitoring
-kubectl apply -f https://raw.githubusercontent.com/kserve/kserve/master/hack/quick_install/prometheus/prometheus-operator/ -n monitoring
-kubectl apply -f https://raw.githubusercontent.com/kserve/kserve/master/hack/quick_install/prometheus/prometheus-instance/ -n monitoring
+helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring
+
+# kubectl create namespace monitoring
+# kubectl apply -f https://raw.githubusercontent.com/kserve/kserve/master/hack/quick_install/prometheus/prometheus-operator/ -n monitoring
+# kubectl apply -f https://raw.githubusercontent.com/kserve/kserve/master/hack/quick_install/prometheus/prometheus-instance/ -n monitoring
 
 echo "Waiting for KServe to be ready..."
-kubectl wait --for=condition=ready pod -l app=kserve -n kserve --timeout=300s
+# kubectl wait --for=condition=ready pod -l app=kserve -n kserve --timeout=300s
+kubectl wait --for=condition=ready pod -l control-plane=kserve-controller-manager -n kserve --timeout=300s
 
 echo "Setup complete! KServe is now ready to use."
 echo "Use 'kubectl config use-context kind-kserve-demo' to switch to this cluster."

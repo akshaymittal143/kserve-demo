@@ -5,15 +5,20 @@ import base64
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Test the deployed KServe model')
-parser.add_argument('--hostname', type=str, required=True, help='Service hostname')
+parser.add_argument('--hostname', type=str, default='localhost', help='Service hostname')
+parser.add_argument('--port', type=int, default=8080, help='Service port')
 parser.add_argument('--auth', action='store_true', help='Use authentication')
 parser.add_argument('--username', type=str, default='admin', help='Auth username')
 parser.add_argument('--password', type=str, default='kserve-demo', help='Auth password')
 args = parser.parse_args()
 
 # Get the InferenceService URL
-SERVICE_HOST = args.hostname
-SERVICE_URL = f"http://{SERVICE_HOST}/v1/models/sentiment-classifier:predict"
+SERVICE_URL = f"http://{args.hostname}:{args.port}/v1/models/sentiment-classifier:predict"
+
+# Get the InferenceService URL
+# SERVICE_HOST = args.hostname
+# # SERVICE_URL = f"http://{SERVICE_HOST}/v1/models/sentiment-classifier:predict"
+# SERVICE_URL = f"http://{SERVICE_HOST}:8080/v1/models/sentiment-classifier:predict"
 
 # Test payload
 data = {

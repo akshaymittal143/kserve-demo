@@ -8,10 +8,24 @@ metadata:
     autoscaling.knative.dev/maxScale: "5"
 spec:
   predictor:
-    canaryTrafficPercent: 20  # 20% traffic to canary
-    containers:
-      - name: sentiment-model
-        image: ${DOCKER_USERNAME}/sentiment-model:v1
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: "docker://akshaymittal143/sentiment-model:v1"
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+  canaryTrafficPercent: 20
+  canary:
+    predictor:
+      model:
+        modelFormat:
+          name: sklearn
+        storageUri: "docker://akshaymittal143/sentiment-model:v2"
         resources:
           limits:
             cpu: "1"
@@ -19,14 +33,3 @@ spec:
           requests:
             cpu: "500m"
             memory: "1Gi"
-    canary:
-      containers:
-        - name: sentiment-model
-          image: ${DOCKER_USERNAME}/sentiment-model:v2
-          resources:
-            limits:
-              cpu: "1"
-              memory: "2Gi"
-            requests:
-              cpu: "500m"
-              memory: "1Gi"
