@@ -52,23 +52,6 @@ Train the initial and improved models:
 
 ### 3. Build and push the Docker image:
 
-
-    # Set Docker username
-    export DOCKER_USERNAME=your-username
-
-    # Build model images
-    # Build v1
-    docker build -t $DOCKER_USERNAME/sentiment-model:v1 -f docker/Dockerfile.v1 .
-
-    # Build v2
-    docker build -t $DOCKER_USERNAME/sentiment-model:v2 -f docker/Dockerfile.v2 .
-
-    # Login and push to Docker Hub
-    docker login
-    docker push $DOCKER_USERNAME/sentiment-model:v1
-    docker push $DOCKER_USERNAME/sentiment-model:v2
-    ```
-
 ### 4. Deploy with KServe
 Basic deployment:
 ```bash

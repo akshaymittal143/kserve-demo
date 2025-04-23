@@ -3,6 +3,12 @@ set -e
 
 echo "Setting up KServe demo environment..."
 
+# Check and delete existing cluster
+if kind get clusters | grep -q "kserve-demo"; then
+    echo "Deleting existing kserve-demo cluster..."
+    kind delete cluster --name kserve-demo
+fi
+
 # Install Homebrew if not installed
 if ! command -v brew &> /dev/null; then
     echo "Installing Homebrew..."
@@ -55,14 +61,23 @@ brew install istioctl
 istioctl install --set profile=demo -y
 kubectl label namespace default istio-injection=enabled
 
-# Install KServe
-echo "Installing KServe..."
-kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.11.0/kserve.yaml
+# Install Cert Manager and wait for it to be ready
+echo "Installing Cert Manager..."
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+echo "Waiting for Cert Manager to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s
 
 # Install Knative Serving
 echo "Installing Knative Serving..."
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.10.0/serving-crds.yaml
+kubectl wait --for=condition=established --timeout=300s crd/services.serving.knative.dev
 kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.10.0/serving-core.yaml
+
+# Install KServe
+echo "Installing KServe..."
+kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.11.0/kserve.yaml
+echo "Waiting for KServe webhooks to be ready..."
+kubectl wait --for=condition=ready pod -l control-plane=kserve-controller-manager -n kserve --timeout=300s
 
 # Install Prometheus for monitoring
 echo "Installing Prometheus..."

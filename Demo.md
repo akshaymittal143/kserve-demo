@@ -38,21 +38,34 @@ kubectl get pods -A
 
 ### 2. Model Training
 ```bash
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # For Unix/macOS
+# Or
+.\.venv\Scripts\activate  # For Windows
+
+# Install requirements
+pip install -r requirements.txt
+```
+```bash
 # Install dependencies
 pip install scikit-learn pandas numpy joblib
 
 # Train models
-python models/train_model_v1.py
-python models/train_model_v2.py
+> python models/train_model_v1.py
+expected output: Model saved to 'sentiment-model-v1/model.joblib'
+> python models/train_model_v2.py
+expected output: Improved model saved to 'sentiment-model-v2/model.joblib'
 ```
 
 ### 3. Docker Image Build & Push
+
 ```bash
 export DOCKER_USERNAME=your-username
 
 # Build images
-docker build -t $DOCKER_USERNAME/sentiment-model:v1 -f docker/Dockerfile.v1 .
 docker build -t $DOCKER_USERNAME/sentiment-model:v2 -f docker/Dockerfile.v2 .
+docker build -t $DOCKER_USERNAME/sentiment-model:v1 -f docker/Dockerfile.v1 .
 
 # Push to registry
 docker login
@@ -66,9 +79,21 @@ docker push $DOCKER_USERNAME/sentiment-model:v2
 sed -i '' "s/\${DOCKER_USERNAME}/$DOCKER_USERNAME/g" kubernetes/kserve_deployment.yaml
 kubectl apply -f kubernetes/kserve_deployment.yaml
 
-# Test deployment 
-export SERVICE_HOSTNAME=$(kubectl get inferenceservice sentiment-classifier -o jsonpath='{.status.url}' | cut -d "/" -f 3)
-python scripts/test_model.py --hostname $SERVICE_HOSTNAME
+# Wait for the service to be ready
+kubectl wait --for=condition=ready inferenceservice sentiment-classifier --timeout=300s
+
+# Get service hostname and test deployment
+SERVICE_HOSTNAME=$(kubectl get inferenceservice sentiment-classifier -o jsonpath='{.status.url}' | cut -d "/" -f 3)
+
+if [ -z "$SERVICE_HOSTNAME" ]; then
+    echo "Error: Could not get service hostname"
+    echo "Checking service status..."
+    kubectl describe inferenceservice sentiment-classifier
+    exit 1
+fi
+
+echo "Service hostname: $SERVICE_HOSTNAME"
+python scripts/test_model.py --hostname "$SERVICE_HOSTNAME" --port 80
 ```
 
 ### 5. Advanced Features
