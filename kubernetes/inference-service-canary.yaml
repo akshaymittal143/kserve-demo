@@ -1,0 +1,32 @@
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "sentiment-classifier"
+  annotations:
+    autoscaling.knative.dev/target: "10"
+    autoscaling.knative.dev/minScale: "1"
+    autoscaling.knative.dev/maxScale: "5"
+spec:
+  predictor:
+    canaryTrafficPercent: 20  # 20% traffic to canary
+    containers:
+      - name: sentiment-model
+        image: your-docker-username/sentiment-model:v1
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+    canary:
+      containers:
+        - name: sentiment-model
+          image: your-docker-username/sentiment-model:v2
+          resources:
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+            requests:
+              cpu: "500m"
+              memory: "1Gi"

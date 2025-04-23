@@ -1,0 +1,22 @@
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "sentiment-classifier"
+spec:
+  predictor:
+    containers:
+      - name: sentiment-model
+        image: ${DOCKER_USERNAME}/sentiment-model:v1
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        readinessProbe:
+          httpGet:
+            path: /v1/models/sentiment-classifier
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5

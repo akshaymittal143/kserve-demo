@@ -1,0 +1,14 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY sentiment-model-v1/model.joblib /app/model.joblib
+COPY server/requirements.txt /app/
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY server/model_server.py /app/
+
+EXPOSE 8080
+
+CMD ["python", "model_server.py"]

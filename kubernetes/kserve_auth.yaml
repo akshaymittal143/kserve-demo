@@ -1,0 +1,36 @@
+# Secret for authentication
+apiVersion: v1
+kind: Secret
+metadata:
+  name: model-auth-secret
+  annotations:
+    serving.kserve.io/secret-format: basicauth
+type: Opaque
+stringData:
+  username: admin
+  password: kserve-demo
+---
+# InferenceService with authentication
+apiVersion: "serving.kserve.io/v1beta1"
+kind: "InferenceService"
+metadata:
+  name: "sentiment-classifier-auth"
+spec:
+  predictor:
+    containers:
+      - name: sentiment-model
+        image: ${DOCKER_USERNAME}/sentiment-model:v1
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+    authConfig:
+      username:
+        name: model-auth-secret
+        key: username
+      password:
+        name: model-auth-secret
+        key: password
