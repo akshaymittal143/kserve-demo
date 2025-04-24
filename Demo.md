@@ -30,11 +30,38 @@ graph LR
 ### 1. Environment Setup
 ```bash
 cd path/to/kserve-demo
-./scripts/setup_cluster.sh
+./scripts/setup_kserve.sh
 
 # Verify installation
 kubectl get pods -A
 ```
+### KServe Component Analysis
+
+#### Core Infrastructure (kube-system namespace)
+- Control plane components (apiserver, controller, scheduler)
+- CoreDNS for service discovery
+- Network plugins
+
+#### KServe Stack Components
+
+**Istio (istio-system)**
+- Service mesh for networking
+- Handles traffic routing and load balancing
+- Required for KServe's networking capabilities
+
+**Knative (knative-serving)**
+- Serverless platform components
+- Handles auto-scaling
+- Manages revisions and traffic splitting
+
+**KServe (kserve)**
+- Model serving controller
+- Handles model deployment and lifecycle
+
+#### Supporting Services
+- Cert Manager: Handles SSL/TLS certificates
+- Prometheus/Grafana: Monitoring and metrics
+- Local Path Provisioner: Storage management
 
 ### 2. Model Training
 ```bash
@@ -45,7 +72,7 @@ source .venv/bin/activate  # For Unix/macOS
 .\.venv\Scripts\activate  # For Windows
 
 # Install requirements
-pip install -r requirements.txt
+pip install -r models/requirements.txt
 ```
 ```bash
 # Install dependencies
@@ -64,8 +91,8 @@ expected output: Improved model saved to 'sentiment-model-v2/model.joblib'
 export DOCKER_USERNAME=your-username
 
 # Build images
-docker build -t $DOCKER_USERNAME/sentiment-model:v2 -f docker/Dockerfile.v2 .
 docker build -t $DOCKER_USERNAME/sentiment-model:v1 -f docker/Dockerfile.v1 .
+docker build -t $DOCKER_USERNAME/sentiment-model:v2 -f docker/Dockerfile.v2 .
 
 # Push to registry
 docker login
@@ -93,7 +120,13 @@ if [ -z "$SERVICE_HOSTNAME" ]; then
 fi
 
 echo "Service hostname: $SERVICE_HOSTNAME"
-python scripts/test_model.py --hostname "$SERVICE_HOSTNAME" --port 80
+
+# ⚠️ Set up port forwarding (run in a separate terminal)
+kubectl port-forward $(kubectl get pods -l serving.kserve.io/inferenceservice=sentiment-classifier -o jsonpath='{.items[0].metadata.name}') 8080:8080
+
+# Test the model using localhost
+python scripts/test_model.py --hostname localhost --port 8080
+
 ```
 
 ### 5. Advanced Features
