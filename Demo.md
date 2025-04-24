@@ -280,19 +280,90 @@ kubectl delete inferenceservice --all
 kubectl delete namespace kserve --ignore-not-found
 kubectl delete namespace knative-serving --ignore-not-found
 
+### What to Expect
 
-What to Expect
-Throughout this demo, you should observe:
+Throughout this demo, you'll observe:
 
-Basic Deployment: You'll see the model deploy and become ready to serve predictions.
-Autoscaling: As load increases, you'll see new pods automatically created to handle the traffic.
-Canary Deployment: You'll observe traffic being split between model versions, allowing for safe rollouts.
-Authentication: You'll see how KServe can secure model endpoints with basic authentication.
+- **Basic Deployment**
+    - Model deployment and readiness for predictions
+    
+- **Autoscaling**
+    - Automatic pod creation as load increases
+    
+- **Canary Deployment**
+    - Traffic splitting between model versions
+    - Safe rollout capabilities
+    
+- **Authentication**
+    - Model endpoint security with basic auth
 
-Each step demonstrates key capabilities that make KServe valuable for production ML deployments on Kubernetes.
-Troubleshooting Tips
+Each step demonstrates key KServe capabilities essential for production ML deployments on Kubernetes.
 
-If pods show ImagePullBackOff errors, check if your Docker images are properly pushed and publicly accessible
-If the InferenceService isn't becoming ready, use kubectl describe inferenceservice sentiment-classifier to see detailed status
-For networking issues, check Istio settings with kubectl get gateway -A and kubectl get virtualservice -A
-Use kubectl logs <pod-name> to check for errors in the running pods
+### Troubleshooting Tips
+
+| Issue | Resolution |
+|-------|------------|
+| ImagePullBackOff errors | Verify Docker images are pushed and public |
+| InferenceService not ready | Use `kubectl describe inferenceservice sentiment-classifier` |
+| Networking issues | Check Istio with `kubectl get gateway -A` and `kubectl get virtualservice -A` |
+| Pod errors | Investigate with `kubectl logs <pod-name>` |
+
+### Understanding Canary Deployments
+
+When running the canary deployment, you should expect to see:
+
+1. Version Distribution
+```bash
+# Check both versions running
+kubectl get pods -l serving.kserve.io/inferenceservice=sentiment-classifier --show-labels
+```
+Expected output:
+```
+NAME                                                              READY   STATUS    LABELS
+sentiment-classifier-predictor-default-00001-deployment-7f...     2/2     Running   version=v1
+sentiment-classifier-predictor-canary-00001-deployment-9d...      2/2     Running   version=v2
+```
+
+2. Monitor Traffic Split
+```bash
+# View real-time traffic distribution
+watch kubectl get isvc sentiment-classifier
+```
+Expected output:
+```
+NAME                   URL                                        READY   PREV   LATEST   PREVROLLEDOUT   LATESTREADY
+sentiment-classifier   http://sentiment-classifier.default.svc    True    80%    20%      True           True
+```
+
+3. Test Traffic Distribution
+```bash
+# Run multiple requests to see distribution
+for i in {1..10}; do
+    python scripts/test_model.py --hostname localhost --port 8080
+    sleep 1
+done
+```
+
+4. Verify Responses
+- V1 Model: Returns basic sentiment (0 or 1)
+- V2 Model: Returns sentiment with confidence scores
+Example V2 response:
+```json
+{
+  "predictions": [
+    {"sentiment": 1, "confidence": 0.92},
+    {"sentiment": 0, "confidence": 0.85}
+  ]
+}
+```
+
+5. Monitor Metrics
+```bash
+# View request metrics
+kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/*/prediction_requests | jq .
+```
+
+Common Issues:
+- If traffic split isn't visible, check: `kubectl describe isvc sentiment-classifier`
+- For pod status issues: `kubectl get pods -w`
+- For traffic routing problems: `kubectl -n istio-system get virtualservices`
