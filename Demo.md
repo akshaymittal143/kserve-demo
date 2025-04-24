@@ -276,9 +276,17 @@ Options to find your Docker username:
 - Pod failures: Check logs with `kubectl logs <pod-name>`
 
 # Clean up any existing resources
+```bash
+# Delete all inference services and related namespaces
 kubectl delete inferenceservice --all
 kubectl delete namespace kserve --ignore-not-found
 kubectl delete namespace knative-serving --ignore-not-found
+
+# Verify deletion
+kubectl get inferenceservice --all-namespaces
+kubectl get namespace kserve
+kubectl get namespace knative-serving
+```
 
 ### What to Expect
 
