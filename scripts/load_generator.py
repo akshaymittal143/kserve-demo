@@ -11,11 +11,12 @@ parser.add_argument('--hostname', type=str, required=True, help='Service hostnam
 parser.add_argument('--requests', type=int, default=500, help='Number of requests to send')
 parser.add_argument('--concurrency', type=int, default=10, help='Number of concurrent requests')
 parser.add_argument('--delay', type=float, default=0.1, help='Delay between requests in seconds')
+parser.add_argument('--port', type=int, default=8080, help='Service port')
 args = parser.parse_args()
 
 # Configuration
 SERVICE_HOST = args.hostname
-SERVICE_URL = f"http://{SERVICE_HOST}/v1/models/sentiment-classifier:predict"
+SERVICE_URL = f"http://{SERVICE_HOST}:{args.port}/v1/models/sentiment-classifier:predict"
 TOTAL_REQUESTS = args.requests
 CONCURRENT_REQUESTS = args.concurrency
 REQUEST_DELAY = args.delay

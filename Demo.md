@@ -132,10 +132,48 @@ python scripts/test_model.py --hostname localhost --port 8080
 ### 5. Advanced Features
 
 **Autoscaling:**
+
+Step 5: Demonstrate Autoscaling
+
+#### Testing Autoscaling
+
+1. Apply autoscaling configuration:
 ```bash
+sed -i '' "s/\${DOCKER_USERNAME}/$DOCKER_USERNAME/g" kubernetes/kserve_autoscaling.yaml
 kubectl apply -f kubernetes/kserve_autoscaling.yaml
-python scripts/load_generator.py --hostname $SERVICE_HOSTNAME --requests 1000 --concurrency 20
 ```
+2. Set up continuous port forwarding (in a separate terminal):
+```bash
+# This script will automatically reconnect if the pod changes
+while true; do
+    POD_NAME=$(kubectl get pods -l serving.kserve.io/inferenceservice=sentiment-classifier -o jsonpath='{.items[0].metadata.name}')
+    if [ ! -z "$POD_NAME" ]; then
+        echo "Forwarding port for pod: $POD_NAME"
+        kubectl port-forward $POD_NAME 8080:8080 || true
+        sleep 2
+    else
+        echo "Waiting for pod to be available..."
+        sleep 5
+    fi
+done
+```
+
+3. Watch pod scaling (in a new terminal):
+```bash
+kubectl get pods -w
+```
+
+4. Generate load to trigger autoscaling:
+```bash
+# Start with a smaller load first
+python scripts/load_generator.py --hostname localhost --port 8080 --requests 100 --concurrency 5
+
+# Then increase load to trigger scaling
+python scripts/load_generator.py --hostname localhost --port 8080 --requests 1000 --concurrency 20
+```
+
+You should see new pods being created automatically as the load increases.
+
 
 **Canary Deployment:**
 ```bash
