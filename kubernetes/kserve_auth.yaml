@@ -1,20 +1,20 @@
-# Secret for authentication
 apiVersion: v1
 kind: Secret
 metadata:
   name: model-auth-secret
-  annotations:
-    serving.kserve.io/secret-format: basicauth
-type: Opaque
+  namespace: default
+type: kubernetes.io/basic-auth
 stringData:
   username: admin
   password: kserve-demo
 ---
-# InferenceService with authentication
 apiVersion: "serving.kserve.io/v1beta1"
 kind: "InferenceService"
 metadata:
   name: "sentiment-classifier-auth"
+  annotations:
+    serving.kserve.io/enable-auth: "true"
+    serving.kserve.io/auth-secret: "model-auth-secret"
 spec:
   predictor:
     containers:
@@ -27,10 +27,3 @@ spec:
           requests:
             cpu: "500m"
             memory: "1Gi"
-    authConfig:
-      username:
-        name: model-auth-secret
-        key: username
-      password:
-        name: model-auth-secret
-        key: password

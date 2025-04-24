@@ -1,35 +1,39 @@
-apiVersion: "serving.kserve.io/v1beta1"
-kind: "InferenceService"
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
 metadata:
-  name: "sentiment-classifier"
+  name: sentiment-classifier
+  namespace: default
   annotations:
-    autoscaling.knative.dev/target: "10"
     autoscaling.knative.dev/minScale: "1"
     autoscaling.knative.dev/maxScale: "5"
+    autoscaling.knative.dev/target: "10"
 spec:
   predictor:
-    model:
-      modelFormat:
-        name: sklearn
-      storageUri: "docker://akshaymittal143/sentiment-model:v1"
-      resources:
-        limits:
-          cpu: "1"
-          memory: "2Gi"
-        requests:
-          cpu: "500m"
-          memory: "1Gi"
-  canaryTrafficPercent: 20
-  canary:
-    predictor:
-      model:
-        modelFormat:
-          name: sklearn
-        storageUri: "docker://akshaymittal143/sentiment-model:v2"
+    containers:
+      - image: akshaymittal143/sentiment-model:v1
+        name: kserve-container
         resources:
-          limits:
-            cpu: "1"
-            memory: "2Gi"
           requests:
             cpu: "500m"
             memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: sentiment-classifier-canary # A distinct name for the canary
+  namespace: default
+spec:
+  predictor:
+    containers:
+      - image: akshaymittal143/sentiment-model:v2
+        name: kserve-container
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"

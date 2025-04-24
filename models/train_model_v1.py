@@ -1,3 +1,35 @@
+"""
+A sentiment analysis model training script that creates and saves a basic text classification pipeline.
+
+This script creates a simple sentiment analysis model using scikit-learn's Pipeline, 
+combining CountVectorizer for text feature extraction and MultinomialNB for classification.
+The model is trained on a small sample dataset of product reviews and their corresponding
+sentiment labels (positive/negative).
+
+The trained model is saved to disk using joblib for later use in sentiment prediction tasks.
+
+Dataset:
+    texts: List of product review strings
+    labels: Binary labels where 1 represents positive sentiment and 0 represents negative sentiment
+
+Pipeline Components:
+    - CountVectorizer: Converts text documents to a matrix of token counts
+    - MultinomialNB: Naive Bayes classifier for discrete features
+
+Outputs:
+    - Saves the trained model pipeline to 'sentiment-model-v1/model.joblib'
+
+Usage:
+    Run this script directly to train and save the model:
+    $ python train_model_v1.py
+
+Requirements:
+    - numpy
+    - pandas
+    - scikit-learn
+    - joblib
+"""
+
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import CountVectorizer

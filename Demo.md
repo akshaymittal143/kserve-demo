@@ -142,7 +142,7 @@ Step 5: Demonstrate Autoscaling
 sed -i '' "s/\${DOCKER_USERNAME}/$DOCKER_USERNAME/g" kubernetes/kserve_autoscaling.yaml
 kubectl apply -f kubernetes/kserve_autoscaling.yaml
 ```
-2. Set up continuous port forwarding (in a separate terminal):
+2. Set up continuous port forwarding (in a separate terminal) ⚠️:
 ```bash
 # This script will automatically reconnect if the pod changes
 while true; do
@@ -158,7 +158,7 @@ while true; do
 done
 ```
 
-3. Watch pod scaling (in a new terminal):
+3. Watch pod scaling (in a new terminal) ⚠️:
 ```bash
 kubectl get pods -w
 ```
@@ -174,16 +174,80 @@ python scripts/load_generator.py --hostname localhost --port 8080 --requests 100
 
 You should see new pods being created automatically as the load increases.
 
-
 **Canary Deployment:**
+
+1. Apply canary configuration:
 ```bash
+# Update and apply canary deployment
+sed -i '' "s/\${DOCKER_USERNAME}/$DOCKER_USERNAME/g" kubernetes/kserve_canary.yaml
 kubectl apply -f kubernetes/kserve_canary.yaml
+
+# Check service status
+kubectl get inferenceservice sentiment-classifier
+
+# Monitor traffic distribution
+kubectl get isvc sentiment-classifier -o yaml | grep -A 5 status
 ```
 
-**Authentication:**
+2. Set up port forwarding for testing (in a separate terminal) ⚠️:
 ```bash
-kubectl apply -f kubernetes/kserve_auth.yaml
+kubectl port-forward $(kubectl get pods -l serving.kserve.io/inferenceservice=sentiment-classifier -o jsonpath='{.items[0].metadata.name}') 8080:8080
 ```
+
+3. Test the canary deployment:
+```bash
+# Run tests against both versions
+python scripts/test_model.py --hostname localhost --port 8080
+```
+
+### 6. Authentication
+
+1. Apply the authentication configuration:
+```bash
+# First, remove any existing secret
+kubectl delete secret model-auth-secret --ignore-not-found
+
+# Apply auth configuration
+kubectl apply -f kubernetes/kserve_auth.yaml
+
+# Verify secret creation
+kubectl get secret model-auth-secret
+```
+
+2. Wait for the authenticated service to be ready:
+```bash
+# Check service status
+kubectl wait --for=condition=ready inferenceservice sentiment-classifier-auth --timeout=300s
+
+# View service details
+kubectl get inferenceservice sentiment-classifier-auth
+```
+
+3. Set up port forwarding (in a separate terminal):
+```bash
+# Get pod name and set up port forwarding
+kubectl port-forward $(kubectl get pods -l serving.kserve.io/inferenceservice=sentiment-classifier-auth -o jsonpath='{.items[0].metadata.name}') 8080:8080
+```
+
+4. Test the authenticated endpoint:
+```bash
+# Test with authentication
+python scripts/test_model.py --hostname localhost --port 8080 --auth --username admin --password kserve-demo
+
+# Test without authentication (should fail)
+python scripts/test_model.py --hostname localhost --port 8080
+```
+
+5. Test with load generator (optional):
+```bash
+# Generate load with authentication
+python scripts/load_generator.py --hostname localhost --port 8080 --requests 100 --concurrency 10 --auth --username admin --password kserve-demo
+```
+
+Expected Results:
+- Authenticated requests should return predictions with 200 status code
+- Unauthenticated requests should fail with 401 Unauthorized
+- You should see authentication headers in the pod logs
 
 ## Cleanup
 ```bash
@@ -215,3 +279,20 @@ Options to find your Docker username:
 kubectl delete inferenceservice --all
 kubectl delete namespace kserve --ignore-not-found
 kubectl delete namespace knative-serving --ignore-not-found
+
+
+What to Expect
+Throughout this demo, you should observe:
+
+Basic Deployment: You'll see the model deploy and become ready to serve predictions.
+Autoscaling: As load increases, you'll see new pods automatically created to handle the traffic.
+Canary Deployment: You'll observe traffic being split between model versions, allowing for safe rollouts.
+Authentication: You'll see how KServe can secure model endpoints with basic authentication.
+
+Each step demonstrates key capabilities that make KServe valuable for production ML deployments on Kubernetes.
+Troubleshooting Tips
+
+If pods show ImagePullBackOff errors, check if your Docker images are properly pushed and publicly accessible
+If the InferenceService isn't becoming ready, use kubectl describe inferenceservice sentiment-classifier to see detailed status
+For networking issues, check Istio settings with kubectl get gateway -A and kubectl get virtualservice -A
+Use kubectl logs <pod-name> to check for errors in the running pods

@@ -2,25 +2,51 @@ import requests
 import json
 import argparse
 import base64
+import time
 
-# Parse command line arguments
+def wait_for_model_ready(url, auth_header=None, timeout=60):
+    print(f"Waiting for model to be ready at {url}")
+    headers = {"Content-Type": "application/json"}
+    if auth_header:
+        headers["Authorization"] = auth_header
+        
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            response = requests.get(url.replace(':predict', '/ready'), 
+                                 headers=headers,
+                                 timeout=5)
+            if response.status_code == 200:
+                return True
+        except requests.exceptions.RequestException:
+            pass
+        print(".", end="", flush=True)
+        time.sleep(2)
+    return False
+
+# Parse arguments
 parser = argparse.ArgumentParser(description='Test the deployed KServe model')
-parser.add_argument('--hostname', type=str, default='localhost', help='Service hostname')
-parser.add_argument('--port', type=int, default=8080, help='Service port')
-parser.add_argument('--auth', action='store_true', help='Use authentication')
-parser.add_argument('--username', type=str, default='admin', help='Auth username')
-parser.add_argument('--password', type=str, default='kserve-demo', help='Auth password')
+parser.add_argument('--hostname', type=str, default='localhost')
+parser.add_argument('--port', type=int, default=8080)
+parser.add_argument('--auth', action='store_true')
+parser.add_argument('--username', type=str, default='admin')
+parser.add_argument('--password', type=str, default='kserve-demo')
 args = parser.parse_args()
 
-# Get the InferenceService URL
-SERVICE_URL = f"http://{args.hostname}:{args.port}/v1/models/sentiment-classifier:predict"
+# Setup URL and headers
+SERVICE_URL = f"http://{args.hostname}:{args.port}/v1/models/sentiment-classifier-auth:predict"
+headers = {"Content-Type": "application/json"}
 
-# Get the InferenceService URL
-# SERVICE_HOST = args.hostname
-# # SERVICE_URL = f"http://{SERVICE_HOST}/v1/models/sentiment-classifier:predict"
-# SERVICE_URL = f"http://{SERVICE_HOST}:8080/v1/models/sentiment-classifier:predict"
+# Add authentication if needed
+auth_header = None
+if args.auth:
+    auth_string = base64.b64encode(
+        f"{args.username}:{args.password}".encode()
+    ).decode()
+    auth_header = f"Basic {auth_string}"
+    headers["Authorization"] = auth_header
 
-# Test payload
+# Test data
 data = {
     "instances": [
         {"text": "This product is amazing!"},
@@ -29,22 +55,25 @@ data = {
     ]
 }
 
-# Prepare headers
-headers = {"Content-Type": "application/json"}
+# Wait for model to be ready
+if not wait_for_model_ready(SERVICE_URL, auth_header):
+    print("\nError: Model not ready after timeout")
+    exit(1)
 
-# Add authentication if needed
-if args.auth:
-    auth_header = base64.b64encode(f"{args.username}:{args.password}".encode()).decode()
-    headers["Authorization"] = f"Basic {auth_header}"
-
-# Send prediction request
-print(f"Sending request to {SERVICE_URL}")
+# Send request
+print(f"\nSending request to {SERVICE_URL}")
 print(f"Request payload: {json.dumps(data, indent=2)}")
-response = requests.post(SERVICE_URL, headers=headers, data=json.dumps(data))
 
-# Print results
-print(f"\nStatus Code: {response.status_code}")
-if response.status_code == 200:
+try:
+    response = requests.post(
+        SERVICE_URL,
+        headers=headers,
+        json=data,
+        timeout=30
+    )
+    response.raise_for_status()
+    print(f"\nStatus Code: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}")
-else:
-    print(f"Error: {response.text}")
+except requests.exceptions.RequestException as e:
+    print(f"\nError: {str(e)}")
+    exit(1)
